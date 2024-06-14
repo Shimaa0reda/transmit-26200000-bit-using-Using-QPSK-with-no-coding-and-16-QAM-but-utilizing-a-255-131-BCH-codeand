@@ -1,0 +1,374 @@
+clear;
+clc;
+Eb=2.5;
+%%%%%%%%%%%%%%%%%%%%%% QPSK %%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%% no coding %%%%%%%%%%%%%%%%%%%%%%%
+No_of_error_bits_QPSK_Binary = zeros(1,5);
+No_of_bits=26200;
+No_of_Sympols = No_of_bits / 2;%as we use QPSK
+Es = 2*Eb; %energy of symbol = 2* energy of bit
+% %SNR_dB = 5 :1: 15 ; %SNR range
+% No_of_SNR_dB = 11;
+% % Linear scale of SNR
+% SNR = 10.^(SNR_dB ./10);
+% % Calculating Noise Spectral Density
+% N0 = Eb ./ SNR ;
+%here we will use 26200 and will iterate for 1000 times
+for i=1:1000
+ Generated_data=randi([0 1] ,[1,No_of_bits]);
+%This line defines a vector named symbols_QPSK that contains four complex numbers
+ % , each representing a unique symbol used in Quadrature Phase Shift Keying (QPSK)
+modulation.
+ S1 = sqrt(Es/2) - 1i*sqrt(Es/2); % 1 - i
+ S2 = -sqrt(Es/2) - 1i*sqrt(Es/2); % -1 - i
+ S3 = -sqrt(Es/2) + 1i*sqrt(Es/2); % -1 + i
+ S4 = sqrt(Es/2) + 1i*sqrt(Es/2); % 1 + i
+ symbols_QPSK =[S1 , S2 , S3 , S4];
+ %%%%%%%%%%%%%%% End of constellation points for QPSK %%%%%%%%%%%%%%%%%%%%%%%%%
+ %%%%%%%%%%%%%%%% QPSK Modulation %%%%%%%%%%%%%%%%%%%%%%
+ QPSK_Binary_Data = zeros(1,No_of_Sympols);
+ Output_Signal_QPSK_Binary = QPSK_Binary_Data;
+ QPSK_Counter = 1;
+ for Q = 1 : 2 : No_of_bits
+ % Mapping 11 to S1 at the fourth quadrent
+ if Generated_data(Q) == 1 && Generated_data(Q+1) == 1
+ QPSK_Binary_Data(QPSK_Counter) = S1;
+ % Mapping 00 to S2 at the third quadrent
+ elseif Generated_data(Q) == 0 && Generated_data(Q+1) == 0
+ QPSK_Binary_Data(QPSK_Counter) = S2;
+ % Mapping 01 to S3 at the second quadrent
+ elseif Generated_data(Q) == 0 && Generated_data(Q+1) == 1
+ QPSK_Binary_Data(QPSK_Counter) = S3;
+ % Mapping 10 to S4 at the first quadrent
+ else
+ QPSK_Binary_Data(QPSK_Counter) = S4;
+ end
+ QPSK_Counter = QPSK_Counter + 1;
+ end
+ %%%%%%%%%%%%%%% End of QPSK Modulation %%%%%%%%%%%%%%%%%%%%
+ %%%%%%%%%%%%%%%%%%%%%% Channel %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ %The code generates and adds noise to a QPSK-modulated signal at different
+ % Signal-to-Noise Ratios (SNRs) to assess its impact on signal quality and
+ % performance.
+ for SNR_dB = [5 6 7 8 9]
+ if (i>100 && SNR_dB~=9)
+ continue;
+ end
+ %Calculates noise power spectral density (N0) based
+ % on energy per bit (Eb) and SNR.
+ N0 = Eb/(10^(SNR_dB/10));
+ variance = sqrt(N0/2);
+ %Generates random noise with zero mean and variance
+ % standard deviation for imaginary and real parts.
+ noise_real = 1i.*randn(1,26200/2).*variance;
+ noise_complex = randn(1,26200/2).*variance;
+ QPSK_noise = noise_real + noise_complex;
+ %Adds noise to the modulated signal.
+ Output_Signal_QPSK_Binary_Noise = QPSK_Binary_Data+QPSK_noise;
+ %%%%%%%%%%%%%%% End of channel %%%%%%%%%%%%%%%%%%%%%%%%%%%
+ %%%%%%%%%%%%%%% QPSK Modulation %%%%%%%%%%%%%%%%%%%%%%
+ %The code performs basic QPSK demodulation, converting a noisy
+ % QPSK signal back into its original binary representation.
+ for m = 1 : No_of_Sympols
+ %Extract Real and Imaginary Parts
+ Real_OutSignal_QPSK = real(Output_Signal_QPSK_Binary_Noise(m));
+ Imag_OutSignal_QPSK = imag(Output_Signal_QPSK_Binary_Noise(m));
+ % demapping it to s1 in the forth quadrent
+ if Real_OutSignal_QPSK > 0 && Imag_OutSignal_QPSK <= 0
+ Output_Signal_QPSK_Binary(m*2 - 1) = 1;
+ Output_Signal_QPSK_Binary(m*2) = 1;
+ % demapping it to s2 in the third quadrent
+ elseif Real_OutSignal_QPSK <= 0 && Imag_OutSignal_QPSK <= 0
+ Output_Signal_QPSK_Binary(m*2 - 1) = 0;
+ Output_Signal_QPSK_Binary(m*2) = 0;
+ % demapping it to s3 in the second quadrent
+ elseif Real_OutSignal_QPSK <= 0 && Imag_OutSignal_QPSK >= 0
+ Output_Signal_QPSK_Binary(m*2 - 1) = 0;
+ Output_Signal_QPSK_Binary(m*2) = 1;
+ % demapping it to s1 in the first quadrent
+ else
+ Output_Signal_QPSK_Binary(m*2 - 1) = 1;
+ Output_Signal_QPSK_Binary(m*2) = 0;
+ end
+ end
+ %%%%%%%%%%%%%%% End of QPSK Modulation %%%%%%%%%%%%%%%%%%%%%
+ %%%%%%%%%%%%%%% BER CALCULATION %%%%%%%%%%%%%%%%%%%%%%%
+ % Accesses an element of the vector QPSK_errors at an index based on the current SNR
+value
+ % minus 4. This vector likely stores error counts for different SNRs.
+ No_of_error_bits_QPSK_Binary(SNR_dB-4)=No_of_error_bits_QPSK_Binary(SNR_dB4)+biterr(Generated_data,Output_Signal_QPSK_Binary);
+ end
+end
+%normalizes error counts based on the total number
+% of bits transmitted for most SNR values.
+No_of_error_bits_QPSK_Binary(1:end-1)=No_of_error_bits_QPSK_Binary(1:end-1)/2620000;
+No_of_error_bits_QPSK_Binary(end)=No_of_error_bits_QPSK_Binary(end)/26200000;
+%%%%%%%%%%%%%%%%%%%%% Interpolation between 9 and 15 %%%%%%%%%%%%%%%%%%%%%%%
+x_QPSK = [8 9];
+BER_8_9_QPSK = No_of_error_bits_QPSK_Binary(4:5);
+linear_interpolation_QPSK=[10 11 12 13 14 15];
+%Takes the logarithm of BER_8_9_QPSK to linearize the BER curve.
+%Interpolates linearly between log(BER) values at x_QPSK
+% to estimate log(BER) at linear_interpolation_QPSK
+%Extrapolates beyond the known range using linear assumptions.
+%Takes the exponential to get estimated BER values at linear_interpolation_QPSK.
+estimated_BER_QPSK =
+exp(interp1(x_QPSK,log(BER_8_9_QPSK),linear_interpolation_QPSK,'linear','extrap'));
+%Combines measured BERs with estimated BERs into a single vector for analysis.
+QPSK_BER = [No_of_error_bits_QPSK_Binary estimated_BER_QPSK];
+ %%%%%%%%%%%%%%% End of BER CALCULATION %%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%%%%%%%%%%%%%%%%%%% 16 QAM %%%%%%%%%%%%%%%%%%%%%%%
+QAM_errors = zeros(1,5);
+N=255;
+K=131;
+%here we will use 26200 and will iterate for 1000 times
+for i=1:1000
+Generated_data_16QAM=randi([0 1] ,[1,26200]);
+%%%%%%%%%%%%%%%%%%%%%% BCH Encoder %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%Converts data elements to finite field elements for BCH encoding GF(2)
+GF_2 = gf(reshape(Generated_data_16QAM,[],K));
+%perform BCH encoding, likely using a (N, K) BCH code.
+%Adds redundant bits to create codewords of length N,
+% improving error resilience.
+Encoder_output = bchenc(GF_2,N,K);
+%Reshapes the encoded data into a single-row vector
+% for subsequent processing.
+Encoder_output=reshape(Encoder_output.x,1,[]);
+%Calculates the length of the encoded data,
+QAM_Length_coded =length(Encoder_output);
+%%%%%%%%%%%%%%%%%%%% End of BCH Encoder %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%% 16QAM Modulation %%%%%%%%%%%%%%%%%%%%%%
+QAM_mapped=mod16(Encoder_output,sqrt(K/N));
+QAM_Length = length(QAM_mapped);
+%%%%%%%%%%%%%% End of 16QAM Modulation %%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%% Channel %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%The code generates and adds noise to a QPSK-modulated signal at different
+ % Signal-to-Noise Ratios (SNRs) to assess its impact on signal quality and
+ % performance.
+for SNR_dB = [5 6 7 8 9]
+if (i>100 && SNR_dB~=9)
+continue;
+end
+%Calculates noise power spectral density (N0) based
+% on energy per bit (Eb) and SNR.
+N0_16QAM= Eb/(10^(SNR_dB/10));
+variance_16QAM = sqrt(N0_16QAM/2);
+%Generates random noise with zero mean and variance
+ % standard deviation for imaginary and real parts
+noise_real = 1i.*randn(1,QAM_Length).*variance_16QAM;
+noise_complex = randn(1,QAM_Length).*variance_16QAM ;
+QAM_noise = noise_real + noise_complex;
+%Add noise to modulated signal
+Output_Signal_16QAM_Noise = transpose(QAM_mapped)+QAM_noise;
+%%%%%%%%%%%%%%%%%%%%End of Channel %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%% 16QAM DeModulation %%%%%%%%%%%%%%%%%%%%%%
+QAM_demapped=demod16(Output_Signal_16QAM_Noise,sqrt(K/N));
+%%%%%%%%%%%%%% End of16QAM DeModulation %%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%% Deconding %%%%%%%%%%%%%%%%%%%%%%%%%%%
+%Converts data elements to finite field elements for BCH decoding (using gf).
+GF_2_DECODED=gf(reshape(QAM_demapped,[],N));
+%Attempts to detect and correct errors within codewords,
+% recovering original data.
+QAM_decodded=bchdec(GF_2_DECODED,N,K);
+%Reshapes the decoded data (QAM_decodded.x) back
+% into a single-row vector for further processing.
+QAM_decodded=reshape(QAM_decodded.x,1,[]);
+%%%%%%%%%%%%%%%% End of decoding %%%%%%%%%%%%%%%%%%%%%%%%%
+ %%%%%%%%%%%%%%% BER CALCULATION %%%%%%%%%%%%%%%%%%%%%%%
+ % Accesses an element of the vector QAM_errors at an index based on the current SNR
+value
+ % minus 4. This vector likely stores error counts for different SNRs.
+QAM_errors(SNR_dB-4)=QAM_errors(SNR_dB-4)+biterr(Generated_data_16QAM,QAM_decodded);
+end
+end
+%normalizes error counts based on the total number
+% of bits transmitted for most SNR values.
+QAM_errors(1:end-1)=QAM_errors(1:end-1)/2620000;
+QAM_errors(end)=QAM_errors(end)/26200000;
+%%%%%%%%%%%%%%%%%%% Interpolation between 9 and 15 %%%%%%%%%%%%%%%%%%%%5
+x_QAM = [8 9];
+BER_8_9_QAM = QAM_errors(4:5);
+xq_QAM=[10 11 12 13 14 15];
+%Takes the logarithm of BER_8_9_QPSK to linearize the BER curve.
+%Interpolates linearly between log(BER) values at x_QPSK
+% to estimate log(BER) at linear_interpolation_QPSK
+%Extrapolates beyond the known range using linear assumptions.
+%Takes the exponential to get estimated BER values at linear_interpolation_QPSK.
+vq_QAM = exp(interp1(x_QAM,log(BER_8_9_QAM ),xq_QAM,'linear','extrap'));
+%Combines measured BERs with estimated BERs into a single vector for analysis.
+QAM_BER = [QAM_errors vq_QAM ];
+ %%%%%%%%%%%%%%% End of BER CALCULATION %%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%% plotting %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+figure;
+SNR_dB = 5:1:15 ;
+semilogy(SNR_dB,QPSK_BER,'g','linewidth',1.5)
+hold on;
+semilogy(SNR_dB,QAM_BER,'r','linewidth',1.5)
+xlabel('Eb/No(dB)');
+ylabel('BER');
+title("BER curve for (255,131)BCH code Vs uncoded QPSK")
+legend("uncoded QPSK","16QAM coded with BCH code");
+
+
+function[QAM_16_Data]=mod16(Data,A)
+No_of_bits=length(Data);
+padding=4-mod(No_of_bits,4);
+if padding~=4
+ Data(end+1:end+padding)=0;
+end
+QAM_16_Data=zeros(No_of_bits/4,1);
+k = 1;
+for B = 1 : 4 : No_of_bits
+ % 0000 mapped to -3-3i
+ if(Data(B) == 0 && Data(B+1) == 0 && Data(B+2)== 0 && Data(B+3)==0)%0000
+ QAM_16_Data(k) = -3*A-A*3i;
+ % 0110 mapped to -1+3i
+ elseif(Data(B) ==0 && Data(B+1) == 1&& Data(B+2)==1 && Data(B+3)==0)%0110
+ QAM_16_Data(k) = -A+3*A*1i;
+ % 0101 mapped to -1-1i
+ elseif(Data(B) ==0 && Data(B+1) == 1&& Data(B+2)==0 && Data(B+3)==1)%0101
+ QAM_16_Data(k) = -A-A*1i;
+ % 0001 mapped to -3-1i
+ elseif(Data(B) ==0 && Data(B+1) == 0&& Data(B+2)==0 && Data(B+3)==1)%0001
+ QAM_16_Data(k) = -3*A-A*1i;
+ % 1000 mapped to 3-3i
+ elseif(Data(B) ==1 && Data(B+1) == 0&& Data(B+2)==0 && Data(B+3)==0)%1000
+ QAM_16_Data(k) =3*A-3*A*1i;
+ % 1011 mapped to 3+1i
+ elseif(Data(B) ==1 && Data(B+1) == 0&& Data(B+2)==1 && Data(B+3)==1)%1011
+ QAM_16_Data(k) =3*A+A*1i;
+ % 1110 mapped to A+3*A*1i
+ elseif(Data(B) ==1 && Data(B+1) == 1&& Data(B+2)==1 && Data(B+3)==0)%1110
+ QAM_16_Data(k) = A+3*A*1i;
+ % 0111 mapped to -1+1i
+ elseif(Data(B) ==0 && Data(B+1) == 1&& Data(B+2)==1 && Data(B+3)==1)%0111
+ QAM_16_Data(k) = -A+A*1i;
+ % 1010 mapped to 3+3i
+ elseif(Data(B) ==1 && Data(B+1) == 0&& Data(B+2)==1 && Data(B+3)==0)%1010
+ QAM_16_Data(k) = 3*A+3*A*1i;
+ % 1100 mapped to 1-3i
+ elseif(Data(B) ==1 && Data(B+1) == 1&& Data(B+2)==0 && Data(B+3)==0)%1100
+ QAM_16_Data(k) =A-3*A*1i;
+ % 1101 mapped to 1-1i
+ elseif(Data(B) ==1 && Data(B+1) == 1&& Data(B+2)==0 && Data(B+3)==1)%1101
+ QAM_16_Data(k) = A-A*1i;
+ % 1111 mapped to 1+1i
+ elseif(Data(B) ==1 && Data(B+1) == 1&& Data(B+2)==1 && Data(B+3)==1)%1111
+ QAM_16_Data(k) =A+A*1i;
+ % 0010 mapped to -3+3i
+ elseif(Data(B) ==0 && Data(B+1) == 0&& Data(B+2)==1 && Data(B+3)==0)%0010
+ QAM_16_Data(k) = -3*A+A*3*1i;
+ % 1001 mapped to 3-1i
+ elseif(Data(B) ==1 && Data(B+1) == 0&& Data(B+2)==0 && Data(B+3)==1)%1001
+ QAM_16_Data(k) =3*A-A*1i;
+ % 0100 mapped to -1-3i
+ elseif(Data(B) ==0 && Data(B+1) == 1&& Data(B+2)==0 && Data(B+3)==0)%0100
+ QAM_16_Data(k) = -1*A-A*3*1i;
+ % 0011 mapped to -3+1i
+ else %0011
+ QAM_16_Data(k) = -3*A+A*1i;
+ end
+ k = k + 1;
+end
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function[Output_Signal_QAM_16]=demod16(Output_Signal_QAM_16_Noise,A)
+L=length(Output_Signal_QAM_16_Noise);
+Output_Signal_QAM_16=zeros(4*L,1);
+QAM_16_Counter = 1;
+for j=1:L
+ if (real(Output_Signal_QAM_16_Noise(j)) >= 0 && imag(Output_Signal_QAM_16_Noise(j))>=0)
+% ---- first quadarture ---- %
+ if (real(Output_Signal_QAM_16_Noise(j)) >=2*A &&
+imag(Output_Signal_QAM_16_Noise(j))>=2*A)
+ Output_Signal_QAM_16(QAM_16_Counter)=1;
+Output_Signal_QAM_16(QAM_16_Counter+1)=0; Output_Signal_QAM_16(QAM_16_Counter+2)=1;
+Output_Signal_QAM_16(QAM_16_Counter+3)=0;
+ elseif(real(Output_Signal_QAM_16_Noise(j))>=2*A &&
+imag(Output_Signal_QAM_16_Noise(j))<=2*A)
+ Output_Signal_QAM_16(QAM_16_Counter)=1;
+Output_Signal_QAM_16(QAM_16_Counter+1)=0;
+Output_Signal_QAM_16(QAM_16_Counter+2)=1;Output_Signal_QAM_16(QAM_16_Counter+3)=1;
+ elseif(real(Output_Signal_QAM_16_Noise(j))<=2*A &&
+imag(Output_Signal_QAM_16_Noise(j))>=2*A)
+ Output_Signal_QAM_16(QAM_16_Counter)=1;
+Output_Signal_QAM_16(QAM_16_Counter+1)=1;
+Output_Signal_QAM_16(QAM_16_Counter+2)=1;Output_Signal_QAM_16(QAM_16_Counter+3)=0;
+ else
+ Output_Signal_QAM_16(QAM_16_Counter)=1;
+Output_Signal_QAM_16(QAM_16_Counter+1)=1;
+Output_Signal_QAM_16(QAM_16_Counter+2)=1;Output_Signal_QAM_16(QAM_16_Counter+3)=1;
+ end
+ elseif(real(Output_Signal_QAM_16_Noise(j))<=0 && imag(Output_Signal_QAM_16_Noise(j))>=0)
+% ---- Second quadarture ---- %
+ if(real(Output_Signal_QAM_16_Noise(j))<=-2*A &&
+imag(Output_Signal_QAM_16_Noise(j))>=2*A)
+ Output_Signal_QAM_16(QAM_16_Counter)=0;
+Output_Signal_QAM_16(QAM_16_Counter+1)=0; Output_Signal_QAM_16(QAM_16_Counter+2)=1;
+Output_Signal_QAM_16(QAM_16_Counter+3)=0;
+ elseif(real(Output_Signal_QAM_16_Noise(j))<=-2*A &&
+imag(Output_Signal_QAM_16_Noise(j))<=2*A)
+ Output_Signal_QAM_16(QAM_16_Counter)=0;
+Output_Signal_QAM_16(QAM_16_Counter+1)=0;
+Output_Signal_QAM_16(QAM_16_Counter+2)=1;Output_Signal_QAM_16(QAM_16_Counter+3)=1;
+ elseif(real(Output_Signal_QAM_16_Noise(j))>=-2*A &&
+imag(Output_Signal_QAM_16_Noise(j))>=2*A)
+ Output_Signal_QAM_16(QAM_16_Counter)=0;
+Output_Signal_QAM_16(QAM_16_Counter+1)=1;
+Output_Signal_QAM_16(QAM_16_Counter+2)=1;Output_Signal_QAM_16(QAM_16_Counter+3)=0;
+ else
+ Output_Signal_QAM_16(QAM_16_Counter)=0;
+Output_Signal_QAM_16(QAM_16_Counter+1)=1;
+Output_Signal_QAM_16(QAM_16_Counter+2)=1;Output_Signal_QAM_16(QAM_16_Counter+3)=1;
+ end
+ elseif(real(Output_Signal_QAM_16_Noise(j))<=0 &&
+imag(Output_Signal_QAM_16_Noise(j))<=0)% ---- Third quadarture ---- %
+if(real(Output_Signal_QAM_16_Noise(j))<=-2*A &&
+imag(Output_Signal_QAM_16_Noise(j))<=-2*A)
+ Output_Signal_QAM_16(QAM_16_Counter)=0;
+Output_Signal_QAM_16(QAM_16_Counter+1)=0; Output_Signal_QAM_16(QAM_16_Counter+2)=0;
+Output_Signal_QAM_16(QAM_16_Counter+3)=0;
+ elseif(real(Output_Signal_QAM_16_Noise(j))<=-2*A &&
+imag(Output_Signal_QAM_16_Noise(j))>=-2*A)
+ Output_Signal_QAM_16(QAM_16_Counter)=0;
+Output_Signal_QAM_16(QAM_16_Counter+1)=0;
+Output_Signal_QAM_16(QAM_16_Counter+2)=0;Output_Signal_QAM_16(QAM_16_Counter+3)=1;
+ elseif(real(Output_Signal_QAM_16_Noise(j))>=-2*A &&
+imag(Output_Signal_QAM_16_Noise(j))<=-2*A)
+ Output_Signal_QAM_16(QAM_16_Counter)=0;
+Output_Signal_QAM_16(QAM_16_Counter+1)=1;
+Output_Signal_QAM_16(QAM_16_Counter+2)=0;Output_Signal_QAM_16(QAM_16_Counter+3)=0;
+ else
+ Output_Signal_QAM_16(QAM_16_Counter)=0;
+Output_Signal_QAM_16(QAM_16_Counter+1)=1;
+Output_Signal_QAM_16(QAM_16_Counter+2)=0;Output_Signal_QAM_16(QAM_16_Counter+3)=1;
+ end
+ else % ---- Fourth quadarture ---- %
+ if(real(Output_Signal_QAM_16_Noise(j))>=2*A &&
+imag(Output_Signal_QAM_16_Noise(j))<=-2*A)
+ Output_Signal_QAM_16(QAM_16_Counter)=1;
+Output_Signal_QAM_16(QAM_16_Counter+1)=0; Output_Signal_QAM_16(QAM_16_Counter+2)=0;
+Output_Signal_QAM_16(QAM_16_Counter+3)=0;
+ elseif(real(Output_Signal_QAM_16_Noise(j))>=2*A &&
+imag(Output_Signal_QAM_16_Noise(j))>=-2*A)
+ Output_Signal_QAM_16(QAM_16_Counter)=1;
+Output_Signal_QAM_16(QAM_16_Counter+1)=0;
+Output_Signal_QAM_16(QAM_16_Counter+2)=0;Output_Signal_QAM_16(QAM_16_Counter+3)=1;
+ elseif(real(Output_Signal_QAM_16_Noise(j))<=2*A &&
+imag(Output_Signal_QAM_16_Noise(j))<=-2*A)
+ Output_Signal_QAM_16(QAM_16_Counter)=1;
+Output_Signal_QAM_16(QAM_16_Counter+1)=1;
+Output_Signal_QAM_16(QAM_16_Counter+2)=0;Output_Signal_QAM_16(QAM_16_Counter+3)=0;
+ else
+ Output_Signal_QAM_16(QAM_16_Counter)=1;
+Output_Signal_QAM_16(QAM_16_Counter+1)=1;
+Output_Signal_QAM_16(QAM_16_Counter+2)=0;Output_Signal_QAM_16(QAM_16_Counter+3)=1;
+ end
+ end
+ QAM_16_Counter = QAM_16_Counter + 4;
+end
+end
